@@ -17,7 +17,7 @@ Internal **Swiss building stock map** for your real estate development organizat
 - Next.js (App Router), React, TypeScript, Tailwind CSS  
 - SQLite + Prisma (`User`, `Building`)  
 - Sessions: [iron-session](https://github.com/vvo/iron-session) (encrypted cookie)  
-- Map: [react-leaflet](https://react-leaflet.js.org/) + OpenStreetMap raster tiles (replace with a tile policy appropriate to your traffic before heavy use)  
+- Map: [react-leaflet](https://react-leaflet.js.org/) + OpenStreetMap raster tiles (replace with a tile policy appropriate to your traffic before heavy use); **black outside Switzerland** via a polygon-with-hole mask (coarse national outline in `src/data/che-outline-hole.ts`—swap for a higher-resolution border if you need exact frontiers / lakes).  
 - Aggregation: [`@turf/turf`](https://turfjs.org/) hex grid on the server (`/api/buildings/hexbins`)  
 - Ingest: [`scripts/gwr-ingest.ts`](scripts/gwr-ingest.ts) — semicolon CSV, LV95 → WGS84 ([proj4](https://github.com/proj4js/proj4js))
 

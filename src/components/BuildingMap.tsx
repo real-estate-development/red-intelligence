@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { MapContainer, Polygon, Popup, TileLayer, Tooltip, useMap } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { SwitzerlandMask } from "@/components/SwitzerlandMask";
 
 type HexBinApi = {
   id: string;
@@ -127,6 +128,7 @@ export function BuildingMap() {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <SwitzerlandMask />
         <HexBinsLayer onStatus={onStatus} />
       </MapContainer>
       {status.loading ? (
