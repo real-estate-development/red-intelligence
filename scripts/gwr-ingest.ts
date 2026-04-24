@@ -9,7 +9,7 @@
  * data, not nationwide). Point GWR_CSV_URL or --file at a full extract when you have one.
  */
 
-import { createReadStream } from "node:fs";
+import { createReadStream, existsSync } from "node:fs";
 import { Readable } from "node:stream";
 import { config as loadEnv } from "dotenv";
 import { parse } from "csv-parse";
@@ -89,6 +89,12 @@ function rowToBuilding(row: Row): { egid: string; address: string; yearBuilt: nu
 
 async function openSourceStream(args: { file?: string; url?: string }): Promise<NodeJS.ReadableStream> {
   if (args.file) {
+    if (!existsSync(args.file)) {
+      throw new Error(
+        `GWR CSV file not found: ${args.file}\n` +
+          `Use a real path to your export, or omit --file to download the default Basel-Stadt CSV.`
+      );
+    }
     return createReadStream(args.file);
   }
   const target = args.url ?? process.env.GWR_CSV_URL ?? DEFAULT_GWR_CSV_URL;

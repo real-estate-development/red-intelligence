@@ -41,12 +41,12 @@ Open [http://localhost:3000](http://localhost:3000), sign in with `SEED_ADMIN_US
 
 1. **Default (no config):** `npm run gwr:ingest` downloads the **Kanton Basel-Stadt** open “Gebäude GWR” CSV from `data.bs.ch` (~32k buildings). This is **real GWR attribute data** but **not nationwide**—useful to validate the pipeline on a small canton.
 
-2. **Your own file:** `npm run gwr:ingest -- --file /path/to/gebaeude.csv`  
+2. **Your own file:** `npm run gwr:ingest -- --file /home/you/Downloads/gwr_gebaeude.csv` (use a path that exists on your machine; `/path/to/…` in docs is only a placeholder.)  
    Expected columns (BFS Merkmalskatalog / typical CKAN exports): `egid`, `gbauj`, `gkode`, `gkodn`, `ggdename`, optional `gebnr`, `gbez`. Delimiter **`;`**. `gkode`/`gkodn` are **LV95 (EPSG:2056)** easting/northing in metres.
 
 3. **Your own URL:** set `GWR_CSV_URL` in `.env` or pass `npm run gwr:ingest -- --url 'https://…/export.csv'`.
 
-4. **Replace vs merge:** By default the script **deletes all** `Building` rows, then loads the CSV (full refresh). To **merge** another file without wiping existing rows: `npm run gwr:ingest -- --append`.
+4. **Replace vs merge:** By default the script **deletes all** `Building` rows, then loads the CSV (full refresh). To **merge** another file without wiping existing rows: `npm run gwr:ingest -- --append --file /home/you/other.csv`.
 
 **Nationwide bulk:** Full Switzerland extracts are distributed via **BFS** (e.g. [housing-stat.ch](https://www.housing-stat.ch) / **MADD** datadownload); point `GWR_CSV_URL` or `--file` at the export you are entitled to use. Licensing and update cadence follow the publisher’s terms.
 
