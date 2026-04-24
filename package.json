@@ -9,7 +9,8 @@
     "lint": "next lint",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "gwr:ingest": "tsx scripts/gwr-ingest.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -17,10 +18,13 @@
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
+    "csv-parse": "^6.2.1",
+    "dotenv": "^17.4.2",
     "iron-session": "^8.0.4",
     "leaflet": "^1.9.4",
     "next": "^15.5.15",
     "prisma": "^6.19.3",
+    "proj4": "^2.20.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-leaflet": "^5.0.0",

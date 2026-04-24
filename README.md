@@ -6,7 +6,7 @@ Internal **Swiss building stock map** for your real estate development organizat
 
 - **Audience:** people inside the organization.
 - **MVP signal:** **year built** (later: renovation year and richer rules).
-- **Map:** point markers, Switzerland-wide intent; demo data is a small sample until federal **GWR** ingest exists.
+- **Map:** point markers; buildings come from **GWR-style CSV ingest** (see below).
 - **Click popup:** **EGID**, **address**, **year built**.
 - **Auth:** username / password; **admins** manage users in-app (`/admin/users`).
 - **Language:** English UI.
@@ -17,7 +17,8 @@ Internal **Swiss building stock map** for your real estate development organizat
 - Next.js (App Router), React, TypeScript, Tailwind CSS  
 - SQLite + Prisma (`User`, `Building`)  
 - Sessions: [iron-session](https://github.com/vvo/iron-session) (encrypted cookie)  
-- Map: [react-leaflet](https://react-leaflet.js.org/) + OpenStreetMap raster tiles (replace with a tile policy appropriate to your traffic before heavy use)
+- Map: [react-leaflet](https://react-leaflet.js.org/) + OpenStreetMap raster tiles (replace with a tile policy appropriate to your traffic before heavy use)  
+- Ingest: [`scripts/gwr-ingest.ts`](scripts/gwr-ingest.ts) — semicolon CSV, LV95 → WGS84 ([proj4](https://github.com/proj4js/proj4js))
 
 ## Quick start
 
@@ -30,15 +31,31 @@ npm install
 mkdir -p data
 npx prisma db push
 npm run db:seed
+npm run gwr:ingest
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000), sign in with `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD`.
 
+## GWR data ingest
+
+1. **Default (no config):** `npm run gwr:ingest` downloads the **Kanton Basel-Stadt** open “Gebäude GWR” CSV from `data.bs.ch` (~32k buildings). This is **real GWR attribute data** but **not nationwide**—useful to validate the pipeline on a small canton.
+
+2. **Your own file:** `npm run gwr:ingest -- --file /path/to/gebaeude.csv`  
+   Expected columns (BFS Merkmalskatalog / typical CKAN exports): `egid`, `gbauj`, `gkode`, `gkodn`, `ggdename`, optional `gebnr`, `gbez`. Delimiter **`;`**. `gkode`/`gkodn` are **LV95 (EPSG:2056)** easting/northing in metres.
+
+3. **Your own URL:** set `GWR_CSV_URL` in `.env` or pass `npm run gwr:ingest -- --url 'https://…/export.csv'`.
+
+4. **Replace vs merge:** By default the script **deletes all** `Building` rows, then loads the CSV (full refresh). To **merge** another file without wiping existing rows: `npm run gwr:ingest -- --append`.
+
+**Nationwide bulk:** Full Switzerland extracts are distributed via **BFS** (e.g. [housing-stat.ch](https://www.housing-stat.ch) / **MADD** datadownload); point `GWR_CSV_URL` or `--file` at the export you are entitled to use. Licensing and update cadence follow the publisher’s terms.
+
+Rows are skipped when `gbauj` is missing or implausible, or coordinates are missing / outside a loose CH bounding box.
+
 ## Production on the mini PC
 
 1. Clone the repo, install Node.js **20+**, copy `.env` with strong secrets.  
-2. `npm ci && npx prisma db push && npm run db:seed && npm run build`  
+2. `npm ci && npx prisma db push && npm run db:seed && npm run gwr:ingest && npm run build`  
 3. Bind to all interfaces and your port, e.g. `HOST=0.0.0.0 PORT=3000 npm run start` (put **behind HTTPS** — see below).  
 4. Port-forward on your router to the mini PC’s LAN IP.  
 5. **TLS:** use a **self-signed** cert and terminate HTTPS (e.g. **Caddy** or **nginx**) in front of `next start`, or use Node’s HTTPS server wrapper. Browsers will warn until users trust the cert or proceed anyway.
@@ -48,11 +65,7 @@ Open [http://localhost:3000](http://localhost:3000), sign in with `SEED_ADMIN_US
 ## Documentation
 
 - [docs/PRODUCT.md](docs/PRODUCT.md) — mission, scope, non-goals  
-- [AGENTS.md](AGENTS.md) — layout, boundaries, where to extend next (GWR ingest, filters, footprints)
-
-## Federal building data (next step)
-
-Demo **EGIDs and coordinates are placeholders**, not GWR truth. Replace `prisma/seed.ts` demo rows with an ingest pipeline (documented in `AGENTS.md`) that loads the official register into `Building`.
+- [AGENTS.md](AGENTS.md) — layout, boundaries, ingest extension points
 
 ## Linear
 

@@ -16,7 +16,7 @@ model User {
   createdAt    DateTime @default(now())
 }
 
-/// Building inventory row; replace demo seed with federal GWR ingest when ready.
+/// Building row from GWR-style CSV ingest (`scripts/gwr-ingest.ts`).
 model Building {
   id        String   @id @default(cuid())
   egid      String   @unique

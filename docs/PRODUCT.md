@@ -6,7 +6,7 @@ Give everyone inside the organization a **single web map** to **explore the Swis
 
 ## Scope (MVP)
 
-- **Switzerland-wide** product intent; data is expected to come from a **federal register** (GWR) once ingest is implemented.
+- **Switzerland-wide** product intent; buildings are loaded from **GWR-style** official extracts (default sample: one canton’s open CSV; nationwide when you supply that file or URL).
 - **Web application** in English: map + login + **in-app admin** for usernames/passwords.
 - **Point markers** for buildings; **all buildings** in the database are shown (no age filter in v1).
 - **Building click** shows at minimum: **EGID**, **address**, **year built**.
@@ -26,6 +26,8 @@ Give everyone inside the organization a **single web map** to **explore the Swis
 - Paid DNS or domain requirement (IP access is acceptable for now).
 - Legal, cadastral, or investment advice; the map is a **working tool**, not a recommendation engine.
 
-## Demo vs production data
+## Data loading
 
-The repository ships with **seeded demo buildings** so the stack runs end-to-end before GWR ingestion exists. **Do not** treat demo EGIDs or locations as authoritative.
+Buildings are **not** created by `prisma db seed`. After seeding the admin user, run **`npm run gwr:ingest`** (see [README.md](../README.md)). The default download is a **canton-level** open GWR extract (Basel-Stadt); nationwide coverage depends on which bulk file or URL you configure.
+
+Treat upstream **EGID** and geometry as authoritative; this app stores a **cache** for the map.
