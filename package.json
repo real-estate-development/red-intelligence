@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "@turf/turf": "^7.3.5",
     "bcryptjs": "^3.0.3",
     "csv-parse": "^6.2.1",
     "dotenv": "^17.4.2",

@@ -6,7 +6,7 @@ Internal **Swiss building stock map** for your real estate development organizat
 
 - **Audience:** people inside the organization.
 - **MVP signal:** **year built** (later: renovation year and richer rules).
-- **Map:** point markers; buildings come from **GWR-style CSV ingest** (see below).
+- **Map:** **~100 hex bins** per screen (Turf hex grid sized to the viewport); each cell shows **mean** and **standard deviation** of **year built** for buildings inside it. Buildings come from **GWR-style CSV ingest** (see below).
 - **Click popup:** **EGID**, **address**, **year built**.
 - **Auth:** username / password; **admins** manage users in-app (`/admin/users`).
 - **Language:** English UI.
@@ -18,6 +18,7 @@ Internal **Swiss building stock map** for your real estate development organizat
 - SQLite + Prisma (`User`, `Building`)  
 - Sessions: [iron-session](https://github.com/vvo/iron-session) (encrypted cookie)  
 - Map: [react-leaflet](https://react-leaflet.js.org/) + OpenStreetMap raster tiles (replace with a tile policy appropriate to your traffic before heavy use)  
+- Aggregation: [`@turf/turf`](https://turfjs.org/) hex grid on the server (`/api/buildings/hexbins`)  
 - Ingest: [`scripts/gwr-ingest.ts`](scripts/gwr-ingest.ts) — semicolon CSV, LV95 → WGS84 ([proj4](https://github.com/proj4js/proj4js))
 
 ## Quick start

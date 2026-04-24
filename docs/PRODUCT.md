@@ -8,18 +8,18 @@ Give everyone inside the organization a **single web map** to **explore the Swis
 
 - **Switzerland-wide** product intent; buildings are loaded from **GWR-style** official extracts (default sample: one canton’s open CSV; nationwide when you supply that file or URL).
 - **Web application** in English: map + login + **in-app admin** for usernames/passwords.
-- **Point markers** for buildings; **all buildings** in the database are shown (no age filter in v1).
-- **Building click** shows at minimum: **EGID**, **address**, **year built**.
+- **Map:** roughly **100 hexagonal bins** covering the current viewport (zoom/pan updates bins). Each bin summarizes **year built** with **mean** and **population standard deviation** over buildings whose coordinates fall inside that hex (empty bins allowed).
+- **Per-building popups** are not required in this phase (aggregate view first).
 - **Access:** reachable from the **public internet** at a **static IP**; **HTTPS** with a **self-signed** certificate (users accept browser warnings); **username/password** authentication.
 
 ## Intended outcomes
 
 - Shared geographic mental model of where **older stock** concentrates.
-- Traceable, repeatable data path from official identifiers (**EGID**) to what the map shows (once GWR ingest ships).
+- Traceable, repeatable data path from official **GWR** extracts to what the map shows (per-building **EGID** remains in the database for future drill-down).
 
 ## Non-goals (current phase)
 
-- Footprints / 3D models (points only for now).
+- Footprints / 3D models (coordinates are points in DB; the UI aggregates into hex bins).
 - Age or year filters on the map (may come later).
 - Multi-language UI.
 - SSO / social login (simple credentials only).

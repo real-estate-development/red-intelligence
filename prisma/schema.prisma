@@ -25,4 +25,6 @@ model Building {
   lat       Float
   lng       Float
   createdAt DateTime @default(now())
+
+  @@index([lat, lng])
 }

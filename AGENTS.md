@@ -18,7 +18,9 @@ This repository is the **red-intelligence** app: internal **building stock map**
 | `src/app/api/` | JSON APIs: auth, buildings, admin users |
 | `src/lib/auth.ts` | iron-session helpers (`getSession`, `requireUser`, `requireAdmin`) |
 | `src/lib/session.ts` | Session cookie options (`SESSION_PASSWORD` ≥ 32 chars) |
-| `src/components/BuildingMap.tsx` | react-leaflet map + markers |
+| `src/components/BuildingMap.tsx` | react-leaflet map + hex bin polygons (viewport refetch) |
+| `src/app/api/buildings/hexbins/route.ts` | bbox query + Turf hex grid (~100 cells) + mean/std dev of `yearBuilt` |
+| `src/lib/hexbins.ts` | hex sizing + point-in-hex aggregation |
 | `scripts/gwr-ingest.ts` | Stream semicolon GWR CSV → LV95→WGS84 → `Building` |
 | `data/app.db` | SQLite file (gitignored); path from `DATABASE_URL` |
 
