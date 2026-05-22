@@ -116,7 +116,7 @@ def join_geojsonseq_chunked(
         gdf = normalize_egid_column(gdf)
         joined_gdf = gdf.merge(df_gwr, on="EGID", how="left")
         joined_gdf = prepare_for_gpkg(joined_gdf)
-        matched += int(joined_gdf["GBAUJ"].gt(0).sum())
+        matched += int(joined_gdf["GBAUP"].gt(0).sum())
         total += len(joined_gdf)
         joined_gdf.to_file(
             out_path,
@@ -161,7 +161,7 @@ def clean_and_join_datasets(
 
     if geom_path.suffix.lower() == ".geojsonseq":
         total, matched = join_geojsonseq_chunked(geom_path, gwr_path, out_path, delimiter, batch_size)
-        print(f"ETL complete successfully. Features: {total:,}, with GBAUJ>0: {matched:,}")
+        print(f"ETL complete successfully. Features: {total:,}, with GBAUP>0: {matched:,}")
         return gpd.GeoDataFrame()
 
     print("1. Loading Swisstopo building geometries...")
@@ -187,8 +187,8 @@ def clean_and_join_datasets(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     print(f"6. Saving optimized output to {out_path}...")
     joined_gdf.to_file(out_path, driver="GPKG", layer=GPKG_LAYER)
-    matched = joined_gdf["GBAUJ"].gt(0).sum()
-    print(f"ETL complete successfully. Features: {len(joined_gdf):,}, with GBAUJ>0: {matched:,}")
+    matched = joined_gdf["GBAUP"].gt(0).sum()
+    print(f"ETL complete successfully. Features: {len(joined_gdf):,}, with GBAUP>0: {matched:,}")
     return joined_gdf
 
 

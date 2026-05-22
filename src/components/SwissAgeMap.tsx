@@ -2,7 +2,7 @@
 
 /**
  * Phase 3: PMTiles building-age overlay on geo.admin WMS basemap.
- * GBAUJ colour scale and hover outline are native MapLibre expressions / feature-state only (no per-frame JS styling).
+ * GBAUP (Bauperiode) colour scale and hover outline are native MapLibre expressions / feature-state only (no per-frame JS styling).
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -162,8 +162,7 @@ export function SwissAgeMap() {
                 <span className="font-medium">EGID:</span> {hover.egid}
               </p>
               <p>
-                <span className="font-medium">Year built:</span>{" "}
-                {hover.yearBuilt > 0 ? hover.yearBuilt : "unknown"}
+                <span className="font-medium">Construction period:</span> {hover.buildPeriodLabel}
               </p>
             </div>
           </Popup>

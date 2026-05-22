@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Phase 2: joined GPKG → PMTiles (tippecanoe). Buildings visible from zoom 11 (-Z 11); only EGID + GBAUJ kept.
+# Phase 2: joined GPKG → PMTiles (tippecanoe). Buildings visible from zoom 11 (-Z 11); only EGID + GBAUP kept.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -40,11 +40,11 @@ run_tippecanoe() {
     -Z 11 -z 17 \
     --drop-densest-as-needed \
     --use-attribute-for-id=EGID \
-    --attribute-type=GBAUJ:int \
+    --attribute-type=GBAUP:int \
     --attribute-type=EGID:string \
     --named-layer="${OUTPUT_LAYER}:${input_path}" \
     -y EGID \
-    -y GBAUJ
+    -y GBAUP
 }
 
 ensure_tippecanoe_image() {
@@ -67,11 +67,11 @@ elif command -v docker >/dev/null 2>&1; then
     -Z 11 -z 17 \
     --drop-densest-as-needed \
     --use-attribute-for-id=EGID \
-    --attribute-type=GBAUJ:int \
+    --attribute-type=GBAUP:int \
     --attribute-type=EGID:string \
     --named-layer="${OUTPUT_LAYER}:/work/$in_rel" \
     -y EGID \
-    -y GBAUJ
+    -y GBAUP
 else
   echo "Need tippecanoe or Docker." >&2
   echo "  Ubuntu 22.04 has no apt package for tippecanoe; Docker is used automatically." >&2

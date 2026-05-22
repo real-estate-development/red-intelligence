@@ -8,8 +8,8 @@ Give everyone inside the organization a **single web map** to **explore the Swis
 
 - **Switzerland-wide** product intent; buildings are loaded from **GWR-style** official extracts (default sample: one canton’s open CSV; nationwide when you supply that file or URL).
 - **Web application** in English: map + login + **in-app admin** for usernames/passwords.
-- **Map:** viewport buildings as **footprints** (when ingested) or **centroid points**; colour encodes each **EGID**’s stock age from **year built**. Pan/zoom refetches the viewport.
-- **Click popup:** **EGID**, **year built**, **age** (reference year − year built).
+- **Map:** building **footprints** from PMTiles; colour encodes each **EGID**’s GWR **construction period** (`GBAUP`).
+- **Click popup:** **EGID**, **construction period** (GWR Bauperiode label).
 - **Access:** reachable from the **public internet** at a **static IP**; **HTTPS** with a **self-signed** certificate (users accept browser warnings); **username/password** authentication.
 
 ## Intended outcomes

@@ -5,9 +5,9 @@ Internal **Swiss building stock map** for your real estate development organizat
 ## Product snapshot
 
 - **Audience:** people inside the organization.
-- **MVP signal:** **year built** (later: renovation year and richer rules).
-- **Map:** **building footprints** when ingested, otherwise **centroid points**; colour encodes each building’s stock age. Buildings come from **BFS public GWR** (`npm run gwr:ingest`); footprints come from a separate GeoJSON footprint ingest.
-- **Click popup:** **EGID**, **year built**, **age** (reference year − year built).
+- **MVP signal:** **construction period** (`GBAUP`; more complete than exact year in GWR).
+- **Map:** **building footprints** via PMTiles overlay; colour encodes each **EGID**’s GWR **Bauperiode** (`GBAUP`). Footprints from swissBUILDINGS3D ETL; attributes from **BFS public GWR** (`npm run etl:process`).
+- **Click popup:** **EGID**, **construction period** (human-readable GBAUP label).
 - **Auth:** username / password; **admins** manage users in-app (`/admin/users`).
 - **Language:** English UI.
 - **Deployment target:** always-on **mini PC** on your network, reachable via **SSH**; you expose it with your **static public IP** and accept **self-signed HTTPS** certificate warnings in the browser.

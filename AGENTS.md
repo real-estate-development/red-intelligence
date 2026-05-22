@@ -18,10 +18,10 @@ This repository is the **red-intelligence** app: internal **building stock map**
 | `src/app/api/` | JSON APIs: auth, admin users |
 | `src/lib/auth.ts` | iron-session helpers (`getSession`, `requireUser`, `requireAdmin`) |
 | `src/lib/session.ts` | Session cookie options (`SESSION_PASSWORD` ≥ 32 chars) |
-| `src/lib/map.ts` | geo.admin WMS basemap, PMTiles protocol, `BUILDINGS` paint (WebGL `step` on `GBAUJ`) |
+| `src/lib/map.ts` | geo.admin WMS basemap, PMTiles protocol, `BUILDINGS` paint (WebGL `step` on `GBAUP`) |
 | `src/components/SwissAgeMap.tsx` | Phase 3 map: PMTiles fill overlay + hover popup (`NEXT_PUBLIC_BUILDINGS_PMTILES_URL`) |
 | `scripts/etl/process_swiss_data.py` | Phase 1: EGID join (usecols, int EGID), output `data/etl/processed_output.gpkg` |
-| `scripts/etl/build_pmtiles.sh` | Phase 2: tippecanoe → `public/tiles/swiss_buildings.pmtiles` (layer `processed_output`, z11–17, EGID+GBAUJ only) |
+| `scripts/etl/build_pmtiles.sh` | Phase 2: tippecanoe → `public/tiles/swiss_buildings.pmtiles` (layer `processed_output`, z11–17, EGID+GBAUP only) |
 | `scripts/gwr-ingest.ts` | BFS MADD **public** ZIP (`gebaeude_batiment_edificio.csv`, tab) → LV95→WGS84 → `Building` |
 | `scripts/footprints-ingest.ts` | GeoJSON Polygon/MultiPolygon footprints → `BuildingFootprint` (WGS84 + bbox cache) |
 | `scripts/tlmregio-footprints-join.ts` | swissTLMRegio Product GPKG (`tlmregio_buildings_building`) + point-in-polygon join → `BuildingFootprint` |
@@ -69,11 +69,11 @@ Implemented as **`npm run footprints:tlmregio-join`** → `scripts/tlmregio-foot
 
 ## Building-age PMTiles pipeline (Phases 1–3)
 
-1. **`npm run etl:process`** — `process_swiss_data.py`: left join on **EGID** only (no spatial join). GWR via **`usecols`**; **EGID → int64** on both sides before merge; missing **GBAUJ → 0**.
-2. **`npm run etl:pmtiles`** — tippecanoe **-Z 11**, **-y EGID -y GBAUJ** only; **`--attribute-type`** for typed tiles; **`--use-attribute-for-id=EGID`**.
-3. **`SwissAgeMap`** — client colours footprints with MapLibre **`step`/`case` expressions** on **GBAUJ**; hover uses **`feature-state` only** (no JS colour loops).
+1. **`npm run etl:process`** — `process_swiss_data.py`: left join on **EGID** only (no spatial join). GWR via **`usecols`**; **EGID → int64** on both sides before merge; missing **GBAUP → 0**.
+2. **`npm run etl:pmtiles`** — tippecanoe **-Z 11**, **-y EGID -y GBAUP** only; **`--attribute-type`** for typed tiles; **`--use-attribute-for-id=EGID`**.
+3. **`SwissAgeMap`** — client colours footprints with MapLibre **`step`/`case` expressions** on **GBAUP**; hover uses **`feature-state` only** (no JS colour loops).
 
-**Do not:** spatial-intersection joins for GWR attributes; load full GWR CSV without `usecols`; compute fill colours in React from GBAUJ on mousemove.
+**Do not:** spatial-intersection joins for GWR attributes; load full GWR CSV without `usecols`; compute fill colours in React from GBAUP on mousemove.
 
 ## How we work
 
