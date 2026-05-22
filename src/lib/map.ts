@@ -34,7 +34,30 @@ export const BASEMAP_STYLE: StyleSpecification = {
   layers: [{ id: "bg-landeskarte-farbe-10", type: "raster", source: "wms-landeskarte-farbe-10", minzoom: 0, maxzoom: 20 }],
 };
 
-/** PMTiles vector overlay (`processed_output` layer, EGID + GBAUJ only). All age shading is MapLibre paint expressions (GPU). */
+/** GWR Merkmalskatalog Bauperiode codes (GBAUP). */
+export const GBAUP_LABELS: Record<number, string> = {
+  8001: "Unknown",
+  8011: "Before 1919",
+  8012: "1919–1945",
+  8013: "1946–1960",
+  8014: "1961–1970",
+  8015: "1971–1980",
+  8016: "1981–1985",
+  8017: "1986–1990",
+  8018: "1991–1995",
+  8019: "1996–2000",
+  8020: "2001–2005",
+  8021: "2006–2010",
+  8022: "2011–2015",
+  8023: "2016 or later",
+};
+
+export function formatBuildPeriod(code: number): string {
+  if (!Number.isFinite(code) || code <= 0) return "unknown";
+  return GBAUP_LABELS[code] ?? `Code ${code}`;
+}
+
+/** PMTiles vector overlay (`processed_output` layer, EGID + GBAUP). Fill colour is MapLibre paint on GBAUP (GPU). */
 export const BUILDINGS = {
   sourceId: "swiss-buildings-source",
   layerId: "buildings-age-layer",
@@ -43,21 +66,22 @@ export const BUILDINGS = {
   minZoom: 11,
   paint: {
     "fill-color": [
-      "step",
-      ["get", "GBAUJ"],
+      "match",
+      ["get", "GBAUP"],
+      8011, "#d73027",
+      8012, "#f46d43",
+      8013, "#fdae61",
+      8014, "#fee08b",
+      8015, "#fee08b",
+      8016, "#d9ef8b",
+      8017, "#d9ef8b",
+      8018, "#a6d96a",
+      8019, "#66bd63",
+      8020, "#43a047",
+      8021, "#1a9850",
+      8022, "#16834a",
+      8023, "#006837",
       "#a6a6a6",
-      1,
-      "#d73027",
-      1919,
-      "#f46d43",
-      1946,
-      "#fdae61",
-      1971,
-      "#fee08b",
-      1991,
-      "#d9ef8b",
-      2011,
-      "#1a9850",
     ],
     "fill-opacity": 0.75,
     "fill-outline-color": [
@@ -109,14 +133,20 @@ export function pmtilesHttpUrl(pmtilesUrl: string): string {
 
 export type BuildingHover = {
   egid: string;
-  yearBuilt: number;
+  buildPeriodCode: number;
+  buildPeriodLabel: string;
   lngLat: { lng: number; lat: number };
 };
 
 export function parseBuildingFeature(
   props: Record<string, unknown> | null | undefined,
-): Pick<BuildingHover, "egid" | "yearBuilt"> | null {
+): Pick<BuildingHover, "egid" | "buildPeriodCode" | "buildPeriodLabel"> | null {
   if (!props || props.EGID == null) return null;
-  const yearBuilt = Number(props.GBAUJ ?? 0);
-  return { egid: String(props.EGID), yearBuilt: Number.isFinite(yearBuilt) ? yearBuilt : 0 };
+  const buildPeriodCode = Number(props.GBAUP ?? 0);
+  const code = Number.isFinite(buildPeriodCode) ? buildPeriodCode : 0;
+  return {
+    egid: String(props.EGID),
+    buildPeriodCode: code,
+    buildPeriodLabel: formatBuildPeriod(code),
+  };
 }
