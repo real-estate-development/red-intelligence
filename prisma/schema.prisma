@@ -24,7 +24,27 @@ model Building {
   yearBuilt Int
   lat       Float
   lng       Float
+  /// GWR `gdekt` (canton of the building’s municipality), e.g. BS, ZH.
+  canton    String?
   createdAt DateTime @default(now())
 
   @@index([lat, lng])
+  @@index([canton])
+}
+
+/// Local building footprint geometry keyed by EGID.
+/// Geometry is stored as GeoJSON string (Polygon or MultiPolygon) in WGS84.
+model BuildingFootprint {
+  id           String   @id @default(cuid())
+  egid         String   @unique
+  geometryJson String
+  minLat       Float
+  minLng       Float
+  maxLat       Float
+  maxLng       Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([minLat, maxLat])
+  @@index([minLng, maxLng])
 }

@@ -1,0 +1,11 @@
+# One-time image for Phase 2 when tippecanoe is not on the host PATH.
+FROM ubuntu:22.04
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    build-essential ca-certificates git libsqlite3-dev zlib1g-dev \
+  && git clone --depth 1 https://github.com/felt/tippecanoe.git /tmp/tippecanoe \
+  && make -C /tmp/tippecanoe -j"$(nproc)" \
+  && make -C /tmp/tippecanoe install \
+  && rm -rf /tmp/tippecanoe /var/lib/apt/lists/*
+WORKDIR /work
+ENTRYPOINT ["tippecanoe"]

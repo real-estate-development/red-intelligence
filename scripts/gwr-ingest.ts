@@ -1,186 +1,178 @@
 /**
- * Ingest GWR-style building CSV into SQLite (Prisma `Building`).
+ * Ingest GWR **Level A** buildings from the BFS MADD **public** national supply
+ * (ZIP + `gebaeude_batiment_edificio.csv`, tab-separated, LV95 coordinates).
  *
- * Expected columns (Merkmalskatalog / cantonal CKAN exports, e.g. data.bs.ch):
- *   egid, gbauj, gkode, gkodn, ggdename, gebnr (optional), gbez (optional)
- * Delimiter: semicolon (;). LV95 coordinates in gkode (E) / gkodn (N).
+ * Source: https://www.housing-stat.ch/de/data/supply/public.html
+ * Delivery ZIPs: https://public.madd.bfs.admin.ch/{scope}.zip  (e.g. `ch`, `tg`, …)
  *
- * Default URL is the Kanton Basel-Stadt "Gebäude GWR" export (real register
- * data, not nationwide). Point GWR_CSV_URL or --file at a full extract when you have one.
+ * Usage:
+ *   npm run gwr:ingest
+ *   npm run gwr:ingest -- --scope tg
+ *   npm run gwr:ingest -- --zip /path/to/tg.zip
+ *   npm run gwr:ingest -- --file /path/to/gebaeude_batiment_edificio.csv
+ *   npm run gwr:ingest -- --append --file …   (merge without wiping DB)
  */
 
-import { createReadStream, existsSync } from "node:fs";
+import { createReadStream, createWriteStream, existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 import { config as loadEnv } from "dotenv";
-import { parse } from "csv-parse";
-import proj4 from "proj4";
+import { Open } from "unzipper";
 import { PrismaClient } from "@prisma/client";
+import { ingestGwrCsvStream } from "./gwr-ingest-core";
 
 loadEnv({ quiet: true });
 
-/** EPSG:2056 (CH1903+ / LV95) → WGS84 */
-const LV95 =
-  "+proj=somerc +lat_0=46.95240555555556 +lon_0=7.43958333333333 +k_0=1 +x_0=2600000 +y_0=1200000 +ellps=bessel +towgs84=674.374,15.056,405.346,0,0,0,0 +units=m +no_defs";
-
-const WGS84 = "EPSG:4326";
-
-/** Example source: real GWR attributes, Kanton Basel-Stadt coverage only. */
-const DEFAULT_GWR_CSV_URL =
-  "https://data.bs.ch/api/explore/v2.1/catalog/datasets/100230/exports/csv?delimiter=%3B";
-
 const prisma = new PrismaClient();
 
-type Row = Record<string, string>;
+const BUILDING_CSV = "gebaeude_batiment_edificio.csv";
+const BFS_TAB = "\t";
 
-function parseArgs() {
+const DEFAULT_BASE = "https://public.madd.bfs.admin.ch";
+
+/** Two-letter canton code or `ch` for all Switzerland (large download). */
+const SCOPE_RE = /^(ch|[a-z]{2})$/;
+
+type ParsedArgs = {
+  append: boolean;
+  scope: string;
+  baseUrl: string;
+  file?: string;
+  zip?: string;
+  zipUrl?: string;
+};
+
+function parseArgs(): ParsedArgs {
   const argv = process.argv.slice(2);
-  let file: string | undefined;
-  let url: string | undefined;
   let append = false;
+  let scope = (process.env.GWR_BFS_SCOPE ?? "ch").trim().toLowerCase();
+  let baseUrl = (process.env.GWR_BFS_PUBLIC_BASE ?? DEFAULT_BASE).replace(/\/+$/, "");
+  let file: string | undefined;
+  let zip: string | undefined;
+  let zipUrl: string | undefined;
+
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "--file" && argv[i + 1]) {
-      file = argv[++i];
-    } else if (a === "--url" && argv[i + 1]) {
-      url = argv[++i];
-    } else if (a === "--append") {
+    if (a === "--append") {
       append = true;
+    } else if (a === "--scope" && argv[i + 1]) {
+      scope = argv[++i].trim().toLowerCase();
+    } else if (a === "--file" && argv[i + 1]) {
+      file = argv[++i];
+    } else if (a === "--zip" && argv[i + 1]) {
+      zip = argv[++i];
+    } else if (a === "--url" && argv[i + 1]) {
+      zipUrl = argv[++i];
+    } else if (a === "--base" && argv[i + 1]) {
+      baseUrl = argv[++i].replace(/\/+$/, "");
     }
   }
-  return { file, url, replace: !append };
-}
 
-function buildAddress(row: Row): string {
-  const place = (row.ggdename ?? "").trim();
-  const nr = (row.gebnr ?? "").trim();
-  const name = (row.gbez ?? "").trim();
-  const parts: string[] = [];
-  if (place) parts.push(place);
-  if (nr) parts.push(`Geb. ${nr}`);
-  if (name) parts.push(name);
-  if (parts.length === 0) return `EGID ${row.egid}`;
-  return parts.join(" · ");
-}
-
-function rowToBuilding(row: Row): { egid: string; address: string; yearBuilt: number; lat: number; lng: number } | null {
-  const egid = String(row.egid ?? "").trim();
-  if (!egid) return null;
-
-  const yearBuilt = Number.parseInt(String(row.gbauj ?? "").trim(), 10);
-  if (!Number.isFinite(yearBuilt) || yearBuilt < 1000 || yearBuilt > 2100) return null;
-
-  const e = Number.parseFloat(String(row.gkode ?? "").replace(",", "."));
-  const n = Number.parseFloat(String(row.gkodn ?? "").replace(",", "."));
-  if (!Number.isFinite(e) || !Number.isFinite(n)) return null;
-
-  const [lng, lat] = proj4(LV95, WGS84, [e, n]);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  /* Rough Switzerland bounding box in WGS84 (excludes obvious projection mistakes) */
-  if (lat < 45.5 || lat > 48.2 || lng < 5.7 || lng > 10.9) return null;
-
-  return {
-    egid,
-    address: buildAddress(row),
-    yearBuilt,
-    lat,
-    lng,
-  };
-}
-
-async function openSourceStream(args: { file?: string; url?: string }): Promise<NodeJS.ReadableStream> {
-  if (args.file) {
-    if (!existsSync(args.file)) {
-      throw new Error(
-        `GWR CSV file not found: ${args.file}\n` +
-          `Use a real path to your export, or omit --file to download the default Basel-Stadt CSV.`
-      );
-    }
-    return createReadStream(args.file);
+  if (!SCOPE_RE.test(scope)) {
+    throw new Error(`Invalid --scope "${scope}": expected "ch" or a two-letter canton code (e.g. tg).`);
   }
-  const target = args.url ?? process.env.GWR_CSV_URL ?? DEFAULT_GWR_CSV_URL;
-  const res = await fetch(target);
+
+  return { append, scope, baseUrl, file, zip, zipUrl };
+}
+
+async function streamToFile(body: ReadableStream<Uint8Array>, dest: string): Promise<void> {
+  await pipeline(Readable.fromWeb(body as import("stream/web").ReadableStream), createWriteStream(dest));
+}
+
+async function downloadZipTo(url: string, dest: string): Promise<void> {
+  console.log(`Downloading: ${url}`);
+  const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(`Failed to download GWR CSV (${res.status}): ${target}`);
+    throw new Error(`ZIP download failed (${res.status}): ${url}`);
   }
   if (!res.body) {
-    throw new Error("Response has no body");
+    throw new Error("ZIP response has no body");
   }
-  return Readable.fromWeb(res.body as import("stream/web").ReadableStream);
+  await streamToFile(res.body, dest);
+}
+
+async function openBuildingCsvStream(
+  args: ParsedArgs
+): Promise<{ stream: NodeJS.ReadableStream; cleanup?: () => void }> {
+  if (args.file) {
+    if (!existsSync(args.file)) {
+      throw new Error(`File not found: ${args.file}`);
+    }
+    return { stream: createReadStream(args.file) };
+  }
+
+  if (args.zip) {
+    if (!existsSync(args.zip)) {
+      throw new Error(`ZIP not found: ${args.zip}`);
+    }
+    const directory = await Open.file(args.zip);
+    const entry = directory.files.find((f) => f.path === BUILDING_CSV && f.type === "File");
+    if (!entry) {
+      throw new Error(
+        `ZIP does not contain ${BUILDING_CSV}. ` +
+          `Expected BFS public MADD layout (see https://www.housing-stat.ch/de/data/supply/public.html).`
+      );
+    }
+    return { stream: entry.stream() };
+  }
+
+  const tempDir = mkdtempSync(path.join(tmpdir(), "gwr-ingest-"));
+  const zipPath = path.join(tempDir, "gwr.zip");
+  const url = args.zipUrl ?? `${args.baseUrl}/${args.scope}.zip`;
+
+  try {
+    await downloadZipTo(url, zipPath);
+    const directory = await Open.file(zipPath);
+    const entry = directory.files.find((f) => f.path === BUILDING_CSV && f.type === "File");
+    if (!entry) {
+      throw new Error(`ZIP from ${url} does not contain ${BUILDING_CSV}.`);
+    }
+
+    return {
+      stream: entry.stream(),
+      cleanup: () => {
+        try {
+          rmSync(tempDir, { recursive: true, force: true });
+        } catch {
+          /* ignore */
+        }
+      },
+    };
+  } catch (e) {
+    try {
+      rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
+    throw e;
+  }
 }
 
 async function main() {
   const args = parseArgs();
-  /** Smaller batches in append mode (each row is an `upsert`). */
-  const batchSize = args.replace ? 120 : 40;
-  const input = await openSourceStream(args);
+  const replace = !args.append;
 
-  if (args.replace) {
-    const deleted = await prisma.building.deleteMany({});
-    console.log(`Replace mode: removed ${deleted.count} existing Building rows.`);
+  if (!args.file && !args.zip) {
+    const url = args.zipUrl ?? `${args.baseUrl}/${args.scope}.zip`;
+    console.log(`BFS public GWR ingest — scope "${args.scope}" (${replace ? "replace" : "append"} mode)`);
+    console.log(`ZIP: ${url}`);
+    console.log(`Inside ZIP: ${BUILDING_CSV} (tab-separated, LV95; see housing-stat public data docs).`);
   }
 
-  const parser = input.pipe(
-    parse({
-      columns: true,
-      delimiter: ";",
-      bom: true,
-      relax_column_count: true,
-      trim: true,
-    })
-  );
+  const { stream, cleanup } = await openBuildingCsvStream(args);
 
-  let seen = 0;
-  let inserted = 0;
-  let skipped = 0;
-  let batch: { egid: string; address: string; yearBuilt: number; lat: number; lng: number }[] = [];
-
-  async function flush() {
-    if (batch.length === 0) return;
-    const dedup = new Map(batch.map((b) => [b.egid, b]));
-    const data = [...dedup.values()];
-
-    if (args.replace) {
-      const res = await prisma.building.createMany({ data });
-      inserted += res.count;
-    } else {
-      await prisma.$transaction(
-        data.map((d) =>
-          prisma.building.upsert({
-            where: { egid: d.egid },
-            create: d,
-            update: {
-              address: d.address,
-              yearBuilt: d.yearBuilt,
-              lat: d.lat,
-              lng: d.lng,
-            },
-          })
-        )
-      );
-      inserted += data.length;
-    }
-    batch = [];
+  try {
+    const stats = await ingestGwrCsvStream(prisma, stream, {
+      replace,
+      delimiter: BFS_TAB,
+      bom: false,
+    });
+    console.log(`Done. Rows parsed: ${stats.seen}, buildings inserted: ${stats.inserted}, rows skipped: ${stats.skipped}`);
+  } finally {
+    cleanup?.();
   }
-
-  for await (const row of parser as AsyncIterable<Row>) {
-    seen++;
-    const b = rowToBuilding(row);
-    if (!b) {
-      skipped++;
-      continue;
-    }
-    batch.push(b);
-    if (batch.length >= batchSize) {
-      await flush();
-    }
-    if (seen % 50_000 === 0) {
-      console.log(`… ${seen} rows read, ${inserted} inserted, ${skipped} skipped`);
-    }
-  }
-
-  await flush();
-
-  console.log(`Done. Rows parsed: ${seen}, buildings inserted: ${inserted}, rows skipped: ${skipped}`);
 }
 
 main()

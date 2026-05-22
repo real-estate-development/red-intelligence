@@ -8,8 +8,8 @@ Give everyone inside the organization a **single web map** to **explore the Swis
 
 - **Switzerland-wide** product intent; buildings are loaded from **GWR-style** official extracts (default sample: one canton’s open CSV; nationwide when you supply that file or URL).
 - **Web application** in English: map + login + **in-app admin** for usernames/passwords.
-- **Map:** roughly **100 hexagonal bins** covering the current viewport (zoom/pan updates bins). Each bin summarizes **year built** with **mean** and **population standard deviation** over buildings whose coordinates fall inside that hex (empty bins allowed).
-- **Per-building popups** are not required in this phase (aggregate view first).
+- **Map:** viewport buildings as **footprints** (when ingested) or **centroid points**; colour encodes each **EGID**’s stock age from **year built**. Pan/zoom refetches the viewport.
+- **Click popup:** **EGID**, **year built**, **age** (reference year − year built).
 - **Access:** reachable from the **public internet** at a **static IP**; **HTTPS** with a **self-signed** certificate (users accept browser warnings); **username/password** authentication.
 
 ## Intended outcomes
@@ -19,7 +19,7 @@ Give everyone inside the organization a **single web map** to **explore the Swis
 
 ## Non-goals (current phase)
 
-- Footprints / 3D models (coordinates are points in DB; the UI aggregates into hex bins).
+- 3D models and advanced styling beyond footprint + centroid display.
 - Age or year filters on the map (may come later).
 - Multi-language UI.
 - SSO / social login (simple credentials only).
@@ -28,6 +28,6 @@ Give everyone inside the organization a **single web map** to **explore the Swis
 
 ## Data loading
 
-Buildings are **not** created by `prisma db seed`. After seeding the admin user, run **`npm run gwr:ingest`** (see [README.md](../README.md)). The default download is a **canton-level** open GWR extract (Basel-Stadt); nationwide coverage depends on which bulk file or URL you configure.
+Buildings are **not** created by `prisma db seed`. After seeding the admin user, run **`npm run gwr:ingest`** (see [README.md](../README.md)). Ingest reads the **BFS MADD public** ZIP delivery ([housing-stat.ch](https://www.housing-stat.ch/de/data/supply/public.html)); default scope is **all Switzerland** (`ch`, large download)—use a **canton scope** or `--file` for smaller loads.
 
 Treat upstream **EGID** and geometry as authoritative; this app stores a **cache** for the map.

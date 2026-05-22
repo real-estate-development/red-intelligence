@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getIronSession } from "iron-session";
-import { cookies } from "next/headers";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
-import { getSessionOptions, type SessionData } from "@/lib/session";
 
 const bodySchema = z.object({
   username: z.string().min(1).max(64),
@@ -29,8 +27,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid username or password" }, { status: 401 });
   }
 
-  const cookieStore = await cookies();
-  const session = await getIronSession<SessionData>(cookieStore, getSessionOptions());
+  const session = await getSession();
   session.userId = user.id;
   session.username = user.username;
   session.isAdmin = user.isAdmin;

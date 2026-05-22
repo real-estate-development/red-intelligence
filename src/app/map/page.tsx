@@ -1,18 +1,18 @@
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
-import { MapShell } from "@/components/MapShell";
+import { MapView } from "@/components/MapView";
+import { requireUser } from "@/lib/auth";
 
 export default async function MapPage() {
   const session = await requireUser();
-  if (!session) {
-    redirect("/login");
-  }
+  if (!session) redirect("/login");
 
   return (
     <div className="flex h-screen flex-col">
       <AppHeader username={session.username!} isAdmin={Boolean(session.isAdmin)} />
-      <MapShell />
+      <div className="min-h-0 flex-1">
+        <MapView />
+      </div>
     </div>
   );
 }

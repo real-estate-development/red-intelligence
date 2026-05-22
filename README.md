@@ -6,8 +6,8 @@ Internal **Swiss building stock map** for your real estate development organizat
 
 - **Audience:** people inside the organization.
 - **MVP signal:** **year built** (later: renovation year and richer rules).
-- **Map:** **~100 hex bins** per screen (Turf hex grid sized to the viewport); each cell shows **mean** and **standard deviation** of **year built** for buildings inside it. Buildings come from **GWR-style CSV ingest** (see below).
-- **Click popup:** **EGID**, **address**, **year built**.
+- **Map:** **building footprints** when ingested, otherwise **centroid points**; colour encodes each building’s stock age. Buildings come from **BFS public GWR** (`npm run gwr:ingest`); footprints come from a separate GeoJSON footprint ingest.
+- **Click popup:** **EGID**, **year built**, **age** (reference year − year built).
 - **Auth:** username / password; **admins** manage users in-app (`/admin/users`).
 - **Language:** English UI.
 - **Deployment target:** always-on **mini PC** on your network, reachable via **SSH**; you expose it with your **static public IP** and accept **self-signed HTTPS** certificate warnings in the browser.
@@ -17,9 +17,9 @@ Internal **Swiss building stock map** for your real estate development organizat
 - Next.js (App Router), React, TypeScript, Tailwind CSS  
 - SQLite + Prisma (`User`, `Building`)  
 - Sessions: [iron-session](https://github.com/vvo/iron-session) (encrypted cookie)  
-- Map: [react-leaflet](https://react-leaflet.js.org/) + OpenStreetMap raster tiles (replace with a tile policy appropriate to your traffic before heavy use); **black outside Switzerland** via a polygon-with-hole mask (coarse national outline in `src/data/che-outline-hole.ts`—swap for a higher-resolution border if you need exact frontiers / lakes).  
-- Aggregation: [`@turf/turf`](https://turfjs.org/) hex grid on the server (`/api/buildings/hexbins`)  
-- Ingest: [`scripts/gwr-ingest.ts`](scripts/gwr-ingest.ts) — semicolon CSV, LV95 → WGS84 ([proj4](https://github.com/proj4js/proj4js))
+- Map: [MapLibre GL](https://maplibre.org/) + [react-map-gl](https://visgl.github.io/react-map-gl/) with Swiss federal WMS basemap; age-based fills per EGID. Tune tile traffic per your deployment.  
+- Footprint ingest: [`@turf/turf`](https://turfjs.org/) in [`scripts/footprints-ingest.ts`](scripts/footprints-ingest.ts) for geometry union/dissolve.  
+- Ingest: [`scripts/gwr-ingest.ts`](scripts/gwr-ingest.ts) — BFS MADD **public** ZIP + tab-separated `gebaeude_batiment_edificio.csv`, LV95 → WGS84 ([proj4](https://github.com/proj4js/proj4js)); see [housing-stat public data](https://www.housing-stat.ch/de/data/supply/public.html)
 
 ## Quick start
 
@@ -32,7 +32,9 @@ npm install
 mkdir -p data
 npx prisma db push
 npm run db:seed
-npm run gwr:ingest
+# First ingest: Switzerland is ~900MB ZIP — use a canton for a smaller run, e.g.:
+GWR_BFS_SCOPE=tg npm run gwr:ingest
+# or: npm run gwr:ingest -- --scope tg
 npm run dev
 ```
 
@@ -40,16 +42,68 @@ Open [http://localhost:3000](http://localhost:3000), sign in with `SEED_ADMIN_US
 
 ## GWR data ingest
 
-1. **Default (no config):** `npm run gwr:ingest` downloads the **Kanton Basel-Stadt** open “Gebäude GWR” CSV from `data.bs.ch` (~32k buildings). This is **real GWR attribute data** but **not nationwide**—useful to validate the pipeline on a small canton.
+Buildings come from the **BFS public MADD** delivery ([housing-stat.ch — public data](https://www.housing-stat.ch/de/data/supply/public.html)): ZIPs at **`https://public.madd.bfs.admin.ch/{scope}.zip`** containing **`gebaeude_batiment_edificio.csv`** (tab-separated, LV95).
 
-2. **Your own file:** `npm run gwr:ingest -- --file /home/you/Downloads/gwr_gebaeude.csv` (use a path that exists on your machine; `/path/to/…` in docs is only a placeholder.)  
-   Expected columns (BFS Merkmalskatalog / typical CKAN exports): `egid`, `gbauj`, `gkode`, `gkodn`, `ggdename`, optional `gebnr`, `gbez`. Delimiter **`;`**. `gkode`/`gkodn` are **LV95 (EPSG:2056)** easting/northing in metres.
+1. **Default:** `GWR_BFS_SCOPE=ch` (or unset; default is `ch`) downloads **`ch.zip`** (~900MB) then ingests all Switzerland. Ensure disk space and bandwidth.
 
-3. **Your own URL:** set `GWR_CSV_URL` in `.env` or pass `npm run gwr:ingest -- --url 'https://…/export.csv'`.
+2. **Smaller canton ZIP:** `npm run gwr:ingest -- --scope tg` (or set `GWR_BFS_SCOPE=tg` in `.env`).
 
-4. **Replace vs merge:** By default the script **deletes all** `Building` rows, then loads the CSV (full refresh). To **merge** another file without wiping existing rows: `npm run gwr:ingest -- --append --file /home/you/other.csv`.
+3. **Local ZIP:** `npm run gwr:ingest -- --zip /path/to/tg.zip` (must contain `gebaeude_batiment_edificio.csv`).
 
-**Nationwide bulk:** Full Switzerland extracts are distributed via **BFS** (e.g. [housing-stat.ch](https://www.housing-stat.ch) / **MADD** datadownload); point `GWR_CSV_URL` or `--file` at the export you are entitled to use. Licensing and update cadence follow the publisher’s terms.
+4. **Extracted CSV only:** `npm run gwr:ingest -- --file /path/to/gebaeude_batiment_edificio.csv` (same tab-separated format as inside the ZIP).
+
+5. **Custom ZIP URL:** `npm run gwr:ingest -- --url 'https://…/custom.zip'`.
+
+6. **Replace vs merge:** By default the script **deletes all** `Building` rows, then loads. **`--append`** upserts by EGID (e.g. merge an extra canton file without wiping).
+
+## Footprint ingest (for polygon rendering)
+
+To render actual building polygons (instead of centroid points) in low-density viewports:
+
+```bash
+npm run footprints:ingest -- --file /path/to/footprints.geojson
+npm run footprints:ingest -- --url https://example.invalid/footprints.geojson
+```
+
+Notes:
+- Footprint features must carry an EGID property (`egid`/`EGID` supported).
+- Geometry must be Polygon or MultiPolygon.
+- If coordinates are LV95, pass `--srid 2056`.
+- You can set `FOOTPRINTS_GEOJSON_URL` in `.env` and then run `npm run footprints:ingest` without `--file`/`--url`.
+
+## swissBUILDINGS3D 3.0 pipeline (swisstopo STAC)
+
+The app now includes a downloader pipeline that fetches swissBUILDINGS3D 3.0 tiles directly from swisstopo via data.geo.admin.ch STAC:
+
+```bash
+npm run swissbuildings3d:pipeline -- --bbox 7.55,47.53,7.63,47.58
+```
+
+This writes tile `.gdb.zip` files to `data/swissbuildings3d/downloads` and creates a manifest at `data/swissbuildings3d/manifest.json`.
+
+Then convert those FileGDB tiles to a merged footprint GeoJSON and ingest:
+
+```bash
+npm run swissbuildings3d:convert -- --manifest data/swissbuildings3d/manifest.json --ingest
+```
+
+Or run the complete flow in one command:
+
+```bash
+npm run swissbuildings3d:full -- --bbox 7.55,47.53,7.63,47.58
+```
+
+Conversion notes:
+- Uses local GDAL CLI tools (`ogr2ogr`, `ogrinfo`) when installed.
+- If local GDAL is missing, it automatically falls back to Docker (prefers `ghcr.io/osgeo/gdal:*` images).
+- Converter enforces 2D Polygon/MultiPolygon output (`-dim 2 -nlt PROMOTE_TO_MULTI`) to avoid 3D geometry/SFCGAL GeoJSON export errors.
+- If the default image is unavailable, it tries multiple GDAL image tags and you can override via `SWISSBUILDINGS3D_GDAL_DOCKER_IMAGE`.
+- The converter auto-selects a likely building layer from each tile; override with `--layer <name>` if needed.
+- Output footprint GeoJSONSeq defaults to `data/swissbuildings3d/footprints.geojsonseq`.
+- Downloader retries each failed tile up to 3 times and logs per-tile failures in the run output and manifest.
+- Converter progress is resumable with `--resume`; failed tiles are retried, and partial footprint outputs require explicit `--allow-partial`.
+
+**Licensing:** follow **`license.pdf`** inside each ZIP and [housing-stat.ch](https://www.housing-stat.ch/de/data/supply/public.html) (Level A public data; source attribution required).
 
 Rows are skipped when `gbauj` is missing or implausible, or coordinates are missing / outside a loose CH bounding box.
 

@@ -40,6 +40,11 @@ yarn-error.log*
 # SQLite database (see DATABASE_URL)
 /data/app.db
 /data/app.db-journal
+/data/etl/
+/public/tiles/*.pmtiles
+__pycache__/
+*.py[cod]
+/data/*
 
 # vercel
 .vercel

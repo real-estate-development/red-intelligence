@@ -1,13 +1,14 @@
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const password = process.env.SEED_ADMIN_PASSWORD;
-  if (!password || password.length < 8) {
-    throw new Error("SEED_ADMIN_PASSWORD must be set (min 8 characters) for prisma db seed");
+  if (process.env.SEED_ADMIN_PASSWORD === undefined) {
+    throw new Error("SEED_ADMIN_PASSWORD must be set for prisma db seed");
   }
+  const password = process.env.SEED_ADMIN_PASSWORD;
   const username = process.env.SEED_ADMIN_USERNAME ?? "admin";
   const hash = await bcrypt.hash(password, 10);
   await prisma.user.upsert({
@@ -16,7 +17,7 @@ async function main() {
     update: { passwordHash: hash, isAdmin: true },
   });
 
-  console.log("Seed: admin user ensured. Load buildings with: npm run gwr:ingest");
+  console.log("Seed: admin user ensured. Load buildings with: npm run gwr:ingest (BFS public ZIP; try GWR_BFS_SCOPE=tg for a smaller first run)");
 }
 
 main()
