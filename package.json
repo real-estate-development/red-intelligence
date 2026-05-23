@@ -18,6 +18,7 @@
     "etl:process": "python3 scripts/etl/process_swiss_data.py",
     "etl:join": "python3 scripts/etl/process_swiss_data.py",
     "etl:pmtiles": "bash scripts/etl/build_pmtiles.sh",
+    "etl:tlm3d-bauperiode": "python3 scripts/etl/tlm3d_bauperiode_join.py",
     "etl:gwr-ch": "bash scripts/etl/fetch_gwr_ch.sh",
     "etl:switzerland": "bash scripts/etl/run_switzerland.sh",
     "swissbuildings3d:pipeline:ch": "tsx scripts/swissbuildings3d-pipeline.ts --bbox 5.96,45.82,10.49,47.81 --limit 10000",
