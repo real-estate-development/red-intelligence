@@ -69,8 +69,12 @@ Implemented as **`npm run footprints:tlmregio-join`** → `scripts/tlmregio-foot
 
 ## Building-age PMTiles pipeline (Phases 1–3)
 
-1. **`npm run etl:process`** — `process_swiss_data.py`: left join on **EGID** only (no spatial join). GWR via **`usecols`**; **EGID → int64** on both sides before merge; missing **GBAUP → 0**.
-2. **`npm run etl:pmtiles`** — tippecanoe **-Z 11**, **-y EGID -y GBAUP** only; **`--attribute-type`** for typed tiles; **`--use-attribute-for-id=EGID`**.
+**Recommended (full Switzerland):** `bash scripts/etl/run_switzerland.sh` — national GWR CSV + **swissTLM3D** footprints (`tlm_bauten_gebaeude_footprint`) joined to **GBAUP** via point-in-polygon (`npm run etl:tlm3d-bauperiode`), then PMTiles.
+
+**Legacy (swissBUILDINGS3D STAC tiles):** can have **internal gaps** (e.g. Winterthur, Altdorf missing in partial extracts).
+
+1. **`npm run etl:tlm3d-bauperiode`** — `scripts/etl/tlm3d_bauperiode_join.py`: GWR points → TLM3D polygons → GeoJSONSeq with **EGID + GBAUP** (default snap 10 m).
+2. **`npm run etl:pmtiles`** — tippecanoe **-Z 11**, **-y EGID -y GBAUP** only; **`--use-attribute-for-id=EGID`**.
 3. **`SwissAgeMap`** — client colours footprints with MapLibre **`step`/`case` expressions** on **GBAUP**; hover uses **`feature-state` only** (no JS colour loops).
 
 **Do not:** spatial-intersection joins for GWR attributes; load full GWR CSV without `usecols`; compute fill colours in React from GBAUP on mousemove.
