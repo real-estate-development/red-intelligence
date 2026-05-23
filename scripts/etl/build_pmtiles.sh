@@ -38,8 +38,10 @@ run_tippecanoe() {
   local input_path="$1"
   tippecanoe --force -o "$OUTPUT" \
     -Z 11 -z 17 \
-    --no-feature-limit \
-    --maximum-tile-bytes=5000000 \
+    --drop-densest-as-needed \
+    --maximum-tile-bytes=750000 \
+    --extend-zooms-if-still-dropping \
+    --single-precision \
     --use-attribute-for-id=EGID \
     --attribute-type=GBAUP:int \
     --attribute-type=EGID:string \
@@ -66,8 +68,10 @@ elif command -v docker >/dev/null 2>&1; then
   docker run --rm -v "$ROOT:/work" -w /work "$TIPPECANOE_IMAGE" \
     --force -o "/work/$out_rel" \
     -Z 11 -z 17 \
-    --no-feature-limit \
-    --maximum-tile-bytes=5000000 \
+    --drop-densest-as-needed \
+    --maximum-tile-bytes=750000 \
+    --extend-zooms-if-still-dropping \
+    --single-precision \
     --use-attribute-for-id=EGID \
     --attribute-type=GBAUP:int \
     --attribute-type=EGID:string \
